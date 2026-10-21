@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GrabIt — Video Downloader</title>
+
+<style>
+  /* ============ THEME — change these colors to restyle everything ============ */
+  :root {
+    --bg: #0b0d12;
+    --card: #14171f;
+    --line: #232838;
+    --text: #e8ecf6;
+    --muted: #8b93a7;
+    --accent: #6c5ce7;
+    --accent2: #00d2a8;
+    --err: #ff7a8a;
+    --radius: 12px;
+  }
+
+  /* ============ RESET & BASE ============ */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(1000px 600px at 50% -10%, #1b1740 0%, var(--bg) 55%);
+    color: var(--text);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: grid;
+    place-items: start center;
+    padding: 64px 20px 80px;
+  }
+  main { width: 100%; max-width: 680px; }
+
+  /* ============ HEADER ============ */
+  h1 {
+    font-size: 40px;
+    letter-spacing: -1.5px;
+    margin: 0 0 6px;
+    font-weight: 800;
+  }
+  h1 span {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .sub { color: var(--muted); margin: 0 0 26px; }
+
+  /* ============ FORM ============ */
+  form { display: flex; gap: 10px; margin-bottom: 14px; }
+  input[type=url] {
+    flex: 1;
+    padding: 15px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input[type=url]:focus { border-color: var(--accent); }
+  input::placeholder { color: #565e73; }
+
+  button {
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    border: 0;
+    border-radius: var(--radius);
+    transition: transform .1s, opacity .15s, background .15s;
+  }
+  button:active:not(:disabled) { transform: scale(.97); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  #go {
+    padding: 15px 26px;
+    background: linear-gradient(135deg, var(--accent), #8b7bff);
+    color: #fff;
+  }
+
+  /* ============ STATUS MESSAGE ============ */
+  #msg {
+    margin: 14px 0;
+    font-size: 14px;
+    min-height: 20px;
+    color: var(--muted);
+  }
+  #msg.err { color: var(--err); }
+  #msg.ok  { color: var(--accent2); }
+
+  /* ============ QUALITY BUTTONS ============ */
+  #options { display: none; margin: 20px 0; }
+  #options.on { display: block; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opt {
+    padding: 11px 18px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 10px;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: #191d2a; }
+  .opt.audio:hover:not(:disabled) { border-color: var(--accent2); }
+
+  /* ============ RESULT BOX ============ */
+  #result {
+    display: none;
+    margin-top: 24px;
+    padding: 18px;
+    border-radius: var(--radius);
+    background: var(--card);
+    border: 1px solid var(--line);
+  }
+  #result.on { display: block; }
+  #result a { color: var(--accent2); font-weight: 600; text-decoration: none; }
+  #result a:hover { text-decoration: underline; }
+  #result p { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
+
+  /* ============ FOOTER NOTICE ============ */
+  .notice {
+    margin-top: 40px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #14171f;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .notice a { color: var(--accent2); }
+
+  /* ============ PROGRESS SPINNER ============ */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    vertical-align: -3px;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+
+<body>
+<main>
+  <h1>Grab<span>It</span></h1>
+  <p class="sub">Paste a link. Pick a format. Download.</p>
+
+  <!-- ============ INPUT FORM ============ -->
+  <form id="form">
+    <input id="url" type="url" required
+           placeholder="https://www.youtube.com/watch?v=…"
+           autocomplete="off" spellcheck="false" />
+    <button id="go" type="submit">Get</button>
+  </form>
+
+  <!-- ============ STATUS ============ -->
+  <div id="msg"></div>
+
+  <!-- ============ QUALITY OPTIONS ============ -->
+  <div id="options">
+    <div class="row">
+      <button class="opt" data-mode="auto" data-q="2160">Video · 4K</button>
+      <button class="opt" data-mode="auto" data-q="1080">Video · 1080p</button>
+      <button class="opt" data-mode="auto" data-q="720">Video · 720p</button>
+      <button class="opt" data-mode="auto" data-q="480">Video · 480p</button>
+      <button class="opt audio" data-mode="audio" data-q="320">Audio · MP3</button>
+    </div>
+  </div>
+
+  <!-- ============ RESULT ============ -->
+  <div id="result"></div>
+
+  <!-- ============ FOOTER ============ -->
+  <div class="notice">
+    Powered by the free <a href="https://cobalt.tools" target="_blank">cobalt.tools</a> API.
+    Rate limit: 6 requests/minute per IP. If a download fails, wait a minute and retry.
+    Only download content you have the right to download.
+  </div>
+</main>
+
+<script>
+/* ================================================================
+   CONFIG — edit these to change the app's behavior
+   ================================================================ */
+
+// Public cobalt API instances. If downloads stop working,
+// try reordering these — a different instance might be up.
+const API_ENDPOINTS = [
+  'https://cobalt-api.kwiatekmiki.com/',
+  'https://cobalt-api.ayo.tf/',
+  'https://api.cobalt.tools/',
+];
+
+// Timeout before giving up on an endpoint (milliseconds)
+const REQUEST_TIMEOUT_MS = 30000;
+
+
+/* ================================================================
+   DOM SHORTCUTS
+   ================================================================ */
+const $ = (s) => document.querySelector(s);
+const form      = $('#form');
+const urlInput  = $('#url');
+const goBtn     = $('#go');
+const msg       = $('#msg');
+const options   = $('#options');
+const result    = $('#result');
+
+
+/* ================================================================
+   STATE
+   ================================================================ */
+let currentUrl = '';
+
+
+/* ================================================================
+   UI HELPERS
+   ================================================================ */
+function setMessage(text, type = '') {
+  msg.className = type;              // '', 'err', or 'ok'
+  msg.textContent = text;
+}
+
+function setBusy(busy, label = 'Working…') {
+  goBtn.disabled = busy;
+  document.querySelectorAll('#options .opt').forEach((b) => { b.disabled = busy; });
+  if (busy) {
+    msg.className = '';
+    msg.innerHTML = `<span class="spinner"></span>${label}`;
+  }
+}
+
+function showOptions() {
+  options.classList.add('on');
+}
+
+function hideOptions() {
+  options.classList.remove('on');
+}
+
+function clearResult() {
+  result.classList.remove('on');
+  result.innerHTML = '';
+}
+
+function showResult(html) {
+  result.innerHTML = html;
+  result.classList.add('on');
+}
+
+
+/* ================================================================
+   FETCH WITH TIMEOUT
+   ================================================================ */
+async function fetchWithTimeout(url, opts, ms = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+
+/* ================================================================
+   API CALL — tries each endpoint until one succeeds
+   ================================================================ */
+async function callApi(body) {
+  let lastError = null;
+
+  for (const endpoint of API_ENDPOINTS) {
+    try {
+      const res = await fetchWithTimeout(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      let data;
+      try { data = await res.json(); }
+      catch { throw new Error('API returned invalid response'); }
+
+      if (data.status === 'error') {
+        const code = data.error?.code || 'unknown';
+
+        // Errors that mean "don't bother trying other endpoints"
+        const fatalMap = {
+          'error.api.link.invalid': 'That link is not supported.',
+          'error.api.content.video.unavailable': 'That video is unavailable (private, removed, or region-locked).',
+          'error.api.rate_exceeded': 'Rate limit hit. Wait 60 seconds and try again.',
+          'error.api.auth.jwt.missing': 'This API instance requires an API key.',
+        };
+        if (fatalMap[code]) throw new Error(fatalMap[code]);
+
+        // Other errors: try next endpoint
+        lastError = new Error(`API error: ${code}`);
+        continue;
+      }
+
+      return data; // success
+    } catch (err) {
+      lastError = err;
+      // Fatal errors break out of the loop
+      if (/rate|link|unavailable|auth|invalid/i.test(err.message)) break;
+    }
+  }
+
+  throw lastError || new Error('All API endpoints failed. Try again in a minute.');
+}
+
+
+/* ================================================================
+   FORM SUBMIT — user pasted a URL
+   ================================================================ */
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const u = urlInput.value.trim();
+  if (!u) return;
+
+  currentUrl = u;
+  clearResult();
+  setMessage('Choose a format:');
+  showOptions();
+});
+
+
+/* ================================================================
+   QUALITY BUTTON — user picked a format
+   ================================================================ */
+document.querySelectorAll('#options .opt').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    startDownload(btn.dataset.mode, btn.dataset.q);
+  });
+});
+
+
+/* ================================================================
+   DOWNLOAD — send request to cobalt API
+   ================================================================ */
+async function startDownload(mode, quality) {
+  if (!currentUrl) return;
+
+  setBusy(true, 'Contacting downloader… (10–30 seconds)');
+  clearResult();
+
+  // Build request body per cobalt API spec
+  const body = {
+    url: currentUrl,
+    downloadMode: mode === 'audio' ? 'audio' : 'auto',
+  };
+
+  if (mode === 'audio') {
+    body.audioFormat = 'mp3';
+    body.audioBitrate = quality === '320' ? '320' : '128';
+  } else {
+    body.videoQuality = quality;
+    body.youtubeVideoCodec = 'h264';
+    body.youtubeVideoContainer = 'mp4';
+  }
+
+  try {
+    const data = await callApi(body);
+    renderResult(data);
+    setMessage('Ready — your download will start automatically.', 'ok');
+  } catch (err) {
+    setMessage(err.message || 'Download failed. Try again in a minute.', 'err');
+    setBusy(false);
+  }
+}
+
+
+/* ================================================================
+   RENDER — show the download link(s)
+   ================================================================ */
+function renderResult(data) {
+
+  // ----- Case 1: picker (multiple files) -----
+  if (data.status === 'picker' && Array.isArray(data.picker)) {
+    let html = '<p>Multiple files available:</p>';
+    data.picker.forEach((item) => {
+      html += `<p><a href="${item.url}" target="_blank" rel="noopener" download>${
+        item.type || 'file'
+      } — open</a></p>`;
+    });
+    showResult(html);
+    setBusy(false);
+    return;
+  }
+
+  // ----- Case 2: single file URL -----
+  if (data.url) {
+    const filename = data.filename || 'Your file is ready';
+    showResult(`
+      <p>${filename}</p>
+      <a href="${data.url}" target="_blank" rel="noopener" download>
+        Download now (if it didn't start)
+      </a>
+    `);
+    setBusy(false);
+
+    // Auto-trigger download
+    window.location.href = data.url;
+    return;
+  }
+
+  // ----- Case 3: unexpected -----
+  throw new Error('Unexpected response from API');
+}
+
+
+/* ================================================================
+   BOOT — check if API is reachable on page load
+   ================================================================ */
+(async function boot() {
+  setMessage('Checking service availability…');
+  try {
+    const res = await fetchWithTimeout(API_ENDPOINTS[0], {
+      method: 'GET',
+    }, 5000);
+    if (res.ok || res.status === 405) {  // 405 = endpoint exists but GET not allowed
+      setMessage('');
+    } else {
+      setMessage('Service may be down — try anyway.', 'err');
+    }
+  } catch {
+    setMessage('Service may be down — try anyway.', 'err');
+  }
+})();
+</script>
+</body>
+</html>
