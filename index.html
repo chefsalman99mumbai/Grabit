@@ -2,440 +2,466 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>GrabIt — Video Downloader</title>
-
 <style>
-  /* ============ THEME — change these colors to restyle everything ============ */
   :root {
-    --bg: #0b0d12;
-    --card: #14171f;
-    --line: #232838;
-    --text: #e8ecf6;
-    --muted: #8b93a7;
-    --accent: #6c5ce7;
-    --accent2: #00d2a8;
-    --err: #ff7a8a;
-    --radius: 12px;
+    --bg: #08090d; --card: rgba(22,26,38,0.72); --card-hover: rgba(30,35,52,0.85);
+    --line: rgba(255,255,255,0.08); --line-strong: rgba(255,255,255,0.14);
+    --text: #eef1f8; --muted: #8a91a8;
+    --accent: #7c5cff; --accent2: #00d9a3; --accent3: #ff4d8f;
+    --err: #ff5577; --ok: #00d9a3; --radius: 16px;
   }
-
-  /* ============ RESET & BASE ============ */
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
   body {
-    margin: 0;
-    min-height: 100vh;
-    background: radial-gradient(1000px 600px at 50% -10%, #1b1740 0%, var(--bg) 55%);
-    color: var(--text);
-    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    display: grid;
-    place-items: start center;
-    padding: 64px 20px 80px;
+    min-height: 100vh; background: var(--bg); color: var(--text);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 64px 20px 100px; position: relative; overflow-x: hidden;
   }
-  main { width: 100%; max-width: 680px; }
+  body::before, body::after {
+    content: ''; position: fixed; border-radius: 50%; filter: blur(100px);
+    opacity: 0.35; pointer-events: none; z-index: 0;
+  }
+  body::before { width: 500px; height: 500px;
+    background: radial-gradient(circle, #7c5cff, transparent 70%);
+    top: -180px; left: -100px; animation: f1 18s ease-in-out infinite; }
+  body::after { width: 400px; height: 400px;
+    background: radial-gradient(circle, #00d9a3, transparent 70%);
+    bottom: -150px; right: -100px; animation: f2 20s ease-in-out infinite; }
+  @keyframes f1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(80px,40px) scale(1.15); } }
+  @keyframes f2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-60px,-40px) scale(1.1); } }
 
-  /* ============ HEADER ============ */
-  h1 {
-    font-size: 40px;
-    letter-spacing: -1.5px;
-    margin: 0 0 6px;
-    font-weight: 800;
-  }
+  main { position: relative; z-index: 1; width: 100%; max-width: 640px; }
+  .header { text-align: center; margin-bottom: 40px; }
+  h1 { font-size: clamp(36px, 6vw, 52px); letter-spacing: -2px; margin: 0 0 8px; font-weight: 800; line-height: 1.05; }
   h1 span {
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    background: linear-gradient(120deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
+    background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
+    color: transparent; animation: shine 4s ease-in-out infinite;
   }
-  .sub { color: var(--muted); margin: 0 0 26px; }
+  @keyframes shine { 0%,100% { background-position: 0% center; } 50% { background-position: 100% center; } }
+  .sub { color: var(--muted); margin: 0; font-size: 15px; }
 
-  /* ============ FORM ============ */
-  form { display: flex; gap: 10px; margin-bottom: 14px; }
-  input[type=url] {
-    flex: 1;
-    padding: 15px 16px;
-    border-radius: var(--radius);
-    border: 1px solid var(--line);
-    background: var(--card);
-    color: var(--text);
-    font-size: 15px;
-    font-family: inherit;
-    outline: none;
-    transition: border-color .15s;
+  .card {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 24px; box-shadow: 0 24px 60px -20px rgba(0,0,0,0.6);
   }
-  input[type=url]:focus { border-color: var(--accent); }
+
+  .form { display: flex; gap: 10px; }
+  .input-wrap { flex: 1; position: relative; }
+  input[type=url] {
+    width: 100%; padding: 16px; border-radius: var(--radius);
+    border: 1px solid var(--line); background: rgba(10,12,18,0.7); color: var(--text);
+    font-size: 15px; font-family: inherit; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input[type=url]:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(124,92,255,0.15); }
   input::placeholder { color: #565e73; }
 
   button {
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-    border: 0;
+    font: inherit; font-weight: 600; cursor: pointer; border: 0;
     border-radius: var(--radius);
-    transition: transform .1s, opacity .15s, background .15s;
+    transition: transform .12s, opacity .15s, background .15s, box-shadow .15s;
   }
-  button:active:not(:disabled) { transform: scale(.97); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:active:not(:disabled) { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  #go {
-    padding: 15px 26px;
-    background: linear-gradient(135deg, var(--accent), #8b7bff);
-    color: #fff;
+  .btn-primary {
+    padding: 0 28px; background: linear-gradient(135deg, var(--accent), #a855f7);
+    color: #fff; box-shadow: 0 10px 25px -8px rgba(124,92,255,0.6);
+    font-size: 15px; min-height: 50px;
   }
+  .btn-primary:hover:not(:disabled) { box-shadow: 0 14px 30px -8px rgba(124,92,255,0.8); }
 
-  /* ============ STATUS MESSAGE ============ */
-  #msg {
-    margin: 14px 0;
-    font-size: 14px;
-    min-height: 20px;
-    color: var(--muted);
+  .status {
+    margin-top: 0; padding: 0 16px; border-radius: 10px; font-size: 14px;
+    display: flex; align-items: center; gap: 10px;
+    opacity: 0; max-height: 0; overflow: hidden;
+    transition: all 0.25s;
   }
-  #msg.err { color: var(--err); }
-  #msg.ok  { color: var(--accent2); }
+  .status.show { opacity: 1; max-height: 200px; padding: 12px 16px; margin-top: 16px; }
+  .status.info { background: rgba(124,92,255,0.1); border: 1px solid rgba(124,92,255,0.3); color: #b3a3ff; }
+  .status.ok   { background: rgba(0,217,163,0.1); border: 1px solid rgba(0,217,163,0.3); color: var(--ok); }
+  .status.err  { background: rgba(255,85,119,0.1); border: 1px solid rgba(255,85,119,0.35); color: var(--err); }
 
-  /* ============ QUALITY BUTTONS ============ */
-  #options { display: none; margin: 20px 0; }
-  #options.on { display: block; }
-  .row { display: flex; flex-wrap: wrap; gap: 8px; }
-  .opt {
-    padding: 11px 18px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    color: var(--text);
-    border-radius: 10px;
-  }
-  .opt:hover:not(:disabled) { border-color: var(--accent); background: #191d2a; }
-  .opt.audio:hover:not(:disabled) { border-color: var(--accent2); }
-
-  /* ============ RESULT BOX ============ */
-  #result {
-    display: none;
-    margin-top: 24px;
-    padding: 18px;
-    border-radius: var(--radius);
-    background: var(--card);
-    border: 1px solid var(--line);
-  }
-  #result.on { display: block; }
-  #result a { color: var(--accent2); font-weight: 600; text-decoration: none; }
-  #result a:hover { text-decoration: underline; }
-  #result p { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
-
-  /* ============ FOOTER NOTICE ============ */
-  .notice {
-    margin-top: 40px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    background: #14171f;
-    border: 1px solid var(--line);
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.6;
-  }
-  .notice a { color: var(--accent2); }
-
-  /* ============ PROGRESS SPINNER ============ */
   .spinner {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--line);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin .8s linear infinite;
-    vertical-align: -3px;
-    margin-right: 6px;
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.2); border-top-color: currentColor;
+    border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress {
+    margin-top: 16px; height: 8px; border-radius: 99px;
+    background: rgba(255,255,255,0.06); overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.3s ease;
+  }
+
+  .qualities { display: none; margin-top: 20px; animation: slideIn 0.3s ease-out; }
+  .qualities.on { display: block; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .q-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .q-btn {
+    padding: 14px; background: rgba(10,12,18,0.6); border: 1px solid var(--line);
+    color: var(--text); border-radius: 12px; display: flex; flex-direction: column;
+    align-items: flex-start; gap: 4px; text-align: left;
+    transition: all 0.15s;
+  }
+  .q-btn:hover:not(:disabled) {
+    background: var(--card-hover); border-color: var(--accent);
+    transform: translateY(-2px); box-shadow: 0 8px 20px -8px rgba(124,92,255,0.5);
+  }
+  .q-btn .q-label { font-weight: 700; font-size: 15px; letter-spacing: -0.2px; }
+  .q-btn .q-hint { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .q-btn.audio:hover:not(:disabled) { border-color: var(--accent2); box-shadow: 0 8px 20px -8px rgba(0,217,163,0.5); }
+
+  .result {
+    display: none; margin-top: 20px; padding: 20px; border-radius: 12px;
+    background: rgba(0,217,163,0.08); border: 1px solid rgba(0,217,163,0.3);
+    animation: slideIn 0.3s ease-out;
+  }
+  .result.on { display: block; }
+  .result p { margin: 0 0 10px; font-size: 14px; }
+  .result .filename { font-weight: 600; color: var(--text); word-break: break-all; }
+  .result a {
+    display: inline-flex; align-items: center; gap: 6px; color: var(--ok);
+    font-weight: 600; text-decoration: none; padding: 8px 14px;
+    background: rgba(0,217,163,0.15); border-radius: 8px; transition: background 0.15s;
+  }
+  .result a:hover { background: rgba(0,217,163,0.25); }
+
+  details#cookies {
+    margin-top: 16px; border: 1px solid var(--line); border-radius: 12px;
+    background: rgba(10,12,18,0.5); overflow: hidden;
+  }
+  details#cookies summary {
+    padding: 12px 16px; cursor: pointer; font-size: 13px; color: var(--muted);
+    list-style: none; user-select: none;
+  }
+  details#cookies summary::-webkit-details-marker { display: none; }
+  details#cookies summary::before { content: '▸ '; display: inline-block; transition: transform 0.2s; }
+  details#cookies[open] summary::before { transform: rotate(90deg); }
+  details#cookies.hint { border-color: #6b5524; }
+  details#cookies.hint summary { color: #ffd166; }
+  details#cookies .body { padding: 0 16px 16px; }
+  details#cookies p { margin: 0 0 10px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  details#cookies code { background: #1f2333; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+  details#cookies textarea {
+    width: 100%; min-height: 80px; padding: 10px; border-radius: 8px;
+    border: 1px solid var(--line); background: #0f1219; color: var(--text);
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px;
+    resize: vertical; outline: none;
+  }
+  details#cookies textarea:focus { border-color: var(--accent); }
+  details#cookies .actions { display: flex; gap: 8px; margin-top: 8px; }
+  details#cookies button.small {
+    padding: 6px 12px; font-size: 12px; background: #1f2333; color: var(--text);
+    border: 1px solid var(--line);
+  }
+  details#cookies button.small:hover { border-color: var(--accent); }
+  #cookie-status { font-size: 12px; color: var(--accent2); align-self: center; margin-left: auto; }
+
+  footer { margin-top: 32px; text-align: center; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  footer a { color: var(--accent2); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 500px) {
+    body { padding: 32px 14px 60px; }
+    .card { padding: 18px; }
+    .form { flex-direction: column; }
+    .btn-primary { justify-content: center; }
+  }
 </style>
 </head>
-
 <body>
 <main>
-  <h1>Grab<span>It</span></h1>
-  <p class="sub">Paste a link. Pick a format. Download.</p>
+  <div class="header">
+    <h1>Grab<span>It</span></h1>
+    <p class="sub">Paste any video link. Download in seconds.</p>
+  </div>
 
-  <!-- ============ INPUT FORM ============ -->
-  <form id="form">
-    <input id="url" type="url" required
-           placeholder="https://www.youtube.com/watch?v=…"
-           autocomplete="off" spellcheck="false" />
-    <button id="go" type="submit">Get</button>
-  </form>
+  <div class="card">
+    <form class="form" id="form">
+      <div class="input-wrap">
+        <input id="url" type="url" required placeholder="https://youtube.com/watch?v=..." autocomplete="off" spellcheck="false" />
+      </div>
+      <button class="btn-primary" id="go" type="submit">Fetch →</button>
+    </form>
 
-  <!-- ============ STATUS ============ -->
-  <div id="msg"></div>
+    <details id="cookies">
+      <summary>Cookies — only if a video fails with "sign in" or age check</summary>
+      <div class="body">
+        <p>
+          Get cookies from your logged-in browser with the
+          <a href="https://github.com/kairi003/Get-cookies.txt-LOCALLY" target="_blank" style="color:var(--accent2)">Get cookies.txt LOCALLY</a>
+          extension. Paste here. Saved locally, sent only to your server.
+        </p>
+        <textarea id="cookie-input" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;..."></textarea>
+        <div class="actions">
+          <button type="button" class="small" id="cookie-save">Save</button>
+          <button type="button" class="small" id="cookie-clear">Clear</button>
+          <span id="cookie-status"></span>
+        </div>
+      </div>
+    </details>
 
-  <!-- ============ QUALITY OPTIONS ============ -->
-  <div id="options">
-    <div class="row">
-      <button class="opt" data-mode="auto" data-q="2160">Video · 4K</button>
-      <button class="opt" data-mode="auto" data-q="1080">Video · 1080p</button>
-      <button class="opt" data-mode="auto" data-q="720">Video · 720p</button>
-      <button class="opt" data-mode="auto" data-q="480">Video · 480p</button>
-      <button class="opt audio" data-mode="audio" data-q="320">Audio · MP3</button>
+    <div class="status" id="status"></div>
+
+    <div class="progress" id="progress-wrap" style="display:none;">
+      <div class="progress-fill" id="progress-fill"></div>
     </div>
+
+    <div class="qualities" id="qualities">
+      <div class="q-grid" id="q-grid"></div>
+    </div>
+
+    <div class="result" id="result"></div>
   </div>
 
-  <!-- ============ RESULT ============ -->
-  <div id="result"></div>
-
-  <!-- ============ FOOTER ============ -->
-  <div class="notice">
-    Powered by the free <a href="https://cobalt.tools" target="_blank">cobalt.tools</a> API.
-    Rate limit: 6 requests/minute per IP. If a download fails, wait a minute and retry.
+  <footer>
     Only download content you have the right to download.
-  </div>
+  </footer>
 </main>
 
 <script>
 /* ================================================================
-   CONFIG — edit these to change the app's behavior
+   CONFIG
    ================================================================ */
-
-// Public cobalt API instances. If downloads stop working,
-// try reordering these — a different instance might be up.
-const API_ENDPOINTS = [
-  'https://cobalt-api.kwiatekmiki.com/',
-  'https://cobalt-api.ayo.tf/',
-  'https://api.cobalt.tools/',
-];
-
-// Timeout before giving up on an endpoint (milliseconds)
-const REQUEST_TIMEOUT_MS = 30000;
-
+const API_BASE = '';   // '' = same origin. Leave as-is.
 
 /* ================================================================
-   DOM SHORTCUTS
+   DOM
    ================================================================ */
 const $ = (s) => document.querySelector(s);
-const form      = $('#form');
-const urlInput  = $('#url');
-const goBtn     = $('#go');
-const msg       = $('#msg');
-const options   = $('#options');
-const result    = $('#result');
-
+const form         = $('#form');
+const urlInput     = $('#url');
+const goBtn        = $('#go');
+const statusEl     = $('#status');
+const qualities    = $('#qualities');
+const qGrid        = $('#q-grid');
+const resultEl     = $('#result');
+const progressWrap = $('#progress-wrap');
+const progressFill = $('#progress-fill');
+const cookieBox    = $('#cookies');
+const cookieInput  = $('#cookie-input');
+const cookieStatus = $('#cookie-status');
 
 /* ================================================================
    STATE
    ================================================================ */
 let currentUrl = '';
+let busy = false;
+let es = null;
+const COOKIE_KEY = 'grabit.cookies';
 
+/* ================================================================
+   COOKIES
+   ================================================================ */
+cookieInput.value = localStorage.getItem(COOKIE_KEY) || '';
+cookieInput.addEventListener('input', () => {
+  cookieStatus.textContent = 'unsaved';
+  cookieBox.classList.remove('hint');
+});
+$('#cookie-save').addEventListener('click', () => {
+  localStorage.setItem(COOKIE_KEY, cookieInput.value);
+  cookieStatus.textContent = '✓ saved';
+});
+$('#cookie-clear').addEventListener('click', () => {
+  localStorage.removeItem(COOKIE_KEY);
+  cookieInput.value = '';
+  cookieStatus.textContent = '';
+  cookieBox.classList.remove('hint');
+});
+const getCookies = () => cookieInput.value.trim();
+
+function promptCookies(message) {
+  cookieBox.classList.add('hint');
+  if (!cookieBox.open) cookieBox.open = true;
+  if (message) setStatus(message, 'err');
+}
 
 /* ================================================================
    UI HELPERS
    ================================================================ */
-function setMessage(text, type = '') {
-  msg.className = type;              // '', 'err', or 'ok'
-  msg.textContent = text;
+function setStatus(text, type = 'info', showSpinner = false) {
+  statusEl.className = 'status show ' + type;
+  statusEl.innerHTML = (showSpinner ? '<span class="spinner"></span>' : '') + `<span>${escapeHtml(text)}</span>`;
 }
-
-function setBusy(busy, label = 'Working…') {
-  goBtn.disabled = busy;
-  document.querySelectorAll('#options .opt').forEach((b) => { b.disabled = busy; });
-  if (busy) {
-    msg.className = '';
-    msg.innerHTML = `<span class="spinner"></span>${label}`;
+function clearStatus() {
+  statusEl.className = 'status';
+  statusEl.innerHTML = '';
+}
+function setProgress(pct) {
+  if (pct == null) {
+    progressWrap.style.display = 'none';
+  } else {
+    progressWrap.style.display = 'block';
+    progressFill.style.width = Math.max(0, Math.min(100, pct)) + '%';
   }
 }
-
-function showOptions() {
-  options.classList.add('on');
+function setBusy(b) {
+  busy = b;
+  goBtn.disabled = b;
+  document.querySelectorAll('.q-btn').forEach(btn => btn.disabled = b);
 }
-
-function hideOptions() {
-  options.classList.remove('on');
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
-
-function clearResult() {
-  result.classList.remove('on');
-  result.innerHTML = '';
-}
-
-function showResult(html) {
-  result.innerHTML = html;
-  result.classList.add('on');
-}
-
 
 /* ================================================================
-   FETCH WITH TIMEOUT
+   FETCH METADATA
    ================================================================ */
-async function fetchWithTimeout(url, opts, ms = REQUEST_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, { ...opts, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-
-/* ================================================================
-   API CALL — tries each endpoint until one succeeds
-   ================================================================ */
-async function callApi(body) {
-  let lastError = null;
-
-  for (const endpoint of API_ENDPOINTS) {
-    try {
-      const res = await fetchWithTimeout(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      let data;
-      try { data = await res.json(); }
-      catch { throw new Error('API returned invalid response'); }
-
-      if (data.status === 'error') {
-        const code = data.error?.code || 'unknown';
-
-        // Errors that mean "don't bother trying other endpoints"
-        const fatalMap = {
-          'error.api.link.invalid': 'That link is not supported.',
-          'error.api.content.video.unavailable': 'That video is unavailable (private, removed, or region-locked).',
-          'error.api.rate_exceeded': 'Rate limit hit. Wait 60 seconds and try again.',
-          'error.api.auth.jwt.missing': 'This API instance requires an API key.',
-        };
-        if (fatalMap[code]) throw new Error(fatalMap[code]);
-
-        // Other errors: try next endpoint
-        lastError = new Error(`API error: ${code}`);
-        continue;
-      }
-
-      return data; // success
-    } catch (err) {
-      lastError = err;
-      // Fatal errors break out of the loop
-      if (/rate|link|unavailable|auth|invalid/i.test(err.message)) break;
-    }
-  }
-
-  throw lastError || new Error('All API endpoints failed. Try again in a minute.');
-}
-
-
-/* ================================================================
-   FORM SUBMIT — user pasted a URL
-   ================================================================ */
-form.addEventListener('submit', (e) => {
+form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const u = urlInput.value.trim();
-  if (!u) return;
+  if (busy) return;
+  const url = urlInput.value.trim();
+  if (!url) return;
 
-  currentUrl = u;
-  clearResult();
-  setMessage('Choose a format:');
-  showOptions();
+  busy = true;
+  goBtn.disabled = true;
+  resultEl.classList.remove('on');
+  resultEl.innerHTML = '';
+  qualities.classList.remove('on');
+  setProgress(null);
+  setStatus('Reading link…', 'info', true);
+
+  try {
+    const r = await fetch(API_BASE + '/api/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, cookies: getCookies() }),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      if (data.needsCookies) promptCookies(data.error);
+      else setStatus(data.error || 'Failed to read link.', 'err');
+      return;
+    }
+    currentUrl = url;
+    renderQualities(data);
+    setStatus('Choose a format below', 'info');
+    cookieBox.classList.remove('hint');
+  } catch (err) {
+    setStatus('Network error: ' + err.message, 'err');
+  } finally {
+    busy = false;
+    goBtn.disabled = false;
+  }
 });
 
+function renderQualities(data) {
+  qGrid.innerHTML = '';
 
-/* ================================================================
-   QUALITY BUTTON — user picked a format
-   ================================================================ */
-document.querySelectorAll('#options .opt').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    startDownload(btn.dataset.mode, btn.dataset.q);
+  data.video.forEach((v) => {
+    const btn = document.createElement('button');
+    btn.className = 'q-btn';
+    btn.innerHTML = `<span class="q-label">${escapeHtml(v.label)}</span><span class="q-hint">Video · MP4</span>`;
+    btn.addEventListener('click', () => startDownload('video', String(v.height)));
+    qGrid.appendChild(btn);
   });
-});
 
+  data.audio.forEach((a) => {
+    const btn = document.createElement('button');
+    btn.className = 'q-btn audio';
+    btn.innerHTML = `<span class="q-label">MP3</span><span class="q-hint">${escapeHtml(a.label)}</span>`;
+    btn.addEventListener('click', () => startDownload('audio', a.q));
+    qGrid.appendChild(btn);
+  });
+
+  qualities.classList.add('on');
+}
 
 /* ================================================================
-   DOWNLOAD — send request to cobalt API
+   START DOWNLOAD
    ================================================================ */
-async function startDownload(mode, quality) {
-  if (!currentUrl) return;
+async function startDownload(kind, quality) {
+  if (!currentUrl || busy) return;
+  setBusy(true);
+  setProgress(0);
+  setStatus('Starting…', 'info', true);
+  resultEl.classList.remove('on');
+  resultEl.innerHTML = '';
 
-  setBusy(true, 'Contacting downloader… (10–30 seconds)');
-  clearResult();
+  try {
+    const r = await fetch(API_BASE + '/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: currentUrl, kind, quality, cookies: getCookies() }),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      if (data.needsCookies) promptCookies(data.error);
+      else setStatus(data.error || 'Could not start download.', 'err');
+      setBusy(false);
+      setProgress(null);
+      return;
+    }
+    listen(data.id);
+  } catch (err) {
+    setStatus('Network error: ' + err.message, 'err');
+    setBusy(false);
+    setProgress(null);
+  }
+}
 
-  // Build request body per cobalt API spec
-  const body = {
-    url: currentUrl,
-    downloadMode: mode === 'audio' ? 'audio' : 'auto',
+/* ================================================================
+   PROGRESS LISTENER
+   ================================================================ */
+function listen(jobId) {
+  es?.close();
+  es = new EventSource(API_BASE + '/api/progress/' + jobId);
+
+  es.onmessage = (ev) => {
+    const d = JSON.parse(ev.data);
+
+    if (d.status === 'running' || d.status === 'queued') {
+      setStatus(d.stage || 'Working…', 'info', true);
+      setProgress(d.progress || 0);
+      return;
+    }
+
+    if (d.status === 'done') {
+      es.close();
+      setProgress(100);
+      setStatus('Ready — download starting', 'ok');
+      const url = API_BASE + '/api/file/' + jobId;
+      resultEl.innerHTML = `
+        <p class="filename">Your file is ready.</p>
+        <a href="${url}" download>Download now (if it didn't auto-start)</a>
+      `;
+      resultEl.classList.add('on');
+      setTimeout(() => { window.location.href = url; }, 250);
+      setTimeout(() => {
+        setBusy(false);
+        setProgress(null);
+      }, 5000);
+      return;
+    }
+
+    if (d.status === 'error') {
+      es.close();
+      if (d.needsCookies) promptCookies(d.error);
+      else setStatus(d.error || 'Download failed.', 'err');
+      setBusy(false);
+      setProgress(null);
+    }
   };
 
-  if (mode === 'audio') {
-    body.audioFormat = 'mp3';
-    body.audioBitrate = quality === '320' ? '320' : '128';
-  } else {
-    body.videoQuality = quality;
-    body.youtubeVideoCodec = 'h264';
-    body.youtubeVideoContainer = 'mp4';
-  }
-
-  try {
-    const data = await callApi(body);
-    renderResult(data);
-    setMessage('Ready — your download will start automatically.', 'ok');
-  } catch (err) {
-    setMessage(err.message || 'Download failed. Try again in a minute.', 'err');
+  es.onerror = () => {
+    es.close();
+    setStatus('Lost connection to server.', 'err');
     setBusy(false);
-  }
+    setProgress(null);
+  };
 }
-
-
-/* ================================================================
-   RENDER — show the download link(s)
-   ================================================================ */
-function renderResult(data) {
-
-  // ----- Case 1: picker (multiple files) -----
-  if (data.status === 'picker' && Array.isArray(data.picker)) {
-    let html = '<p>Multiple files available:</p>';
-    data.picker.forEach((item) => {
-      html += `<p><a href="${item.url}" target="_blank" rel="noopener" download>${
-        item.type || 'file'
-      } — open</a></p>`;
-    });
-    showResult(html);
-    setBusy(false);
-    return;
-  }
-
-  // ----- Case 2: single file URL -----
-  if (data.url) {
-    const filename = data.filename || 'Your file is ready';
-    showResult(`
-      <p>${filename}</p>
-      <a href="${data.url}" target="_blank" rel="noopener" download>
-        Download now (if it didn't start)
-      </a>
-    `);
-    setBusy(false);
-
-    // Auto-trigger download
-    window.location.href = data.url;
-    return;
-  }
-
-  // ----- Case 3: unexpected -----
-  throw new Error('Unexpected response from API');
-}
-
-
-/* ================================================================
-   BOOT — check if API is reachable on page load
-   ================================================================ */
-(async function boot() {
-  setMessage('Checking service availability…');
-  try {
-    const res = await fetchWithTimeout(API_ENDPOINTS[0], {
-      method: 'GET',
-    }, 5000);
-    if (res.ok || res.status === 405) {  // 405 = endpoint exists but GET not allowed
-      setMessage('');
-    } else {
-      setMessage('Service may be down — try anyway.', 'err');
-    }
-  } catch {
-    setMessage('Service may be down — try anyway.', 'err');
-  }
-})();
 </script>
 </body>
 </html>
